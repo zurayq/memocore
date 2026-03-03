@@ -1,0 +1,21 @@
+# Core framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# Database
+sqlalchemy>=2.0.0
+aiosqlite>=0.20.0          # SQLite async driver (dev)
+asyncpg>=0.29.0            # PostgreSQL async driver (prod)
+
+# Configuration
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+
+# OpenAI
+openai>=1.35.0
+
+# Scheduler
+apscheduler>=3.10.4
+
+# HTTP client (used internally by openai SDK)
+httpx>=0.27.0
