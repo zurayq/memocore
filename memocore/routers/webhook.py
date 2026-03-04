@@ -12,6 +12,7 @@ WhatsApp Cloud API sends a POST to this endpoint. For simulation we accept
 a flat JSON body matching our WebhookPayload schema.
 """
 
+import asyncio
 import logging
 from typing import Annotated
 
@@ -35,7 +36,7 @@ router = APIRouter(prefix="/webhook", tags=["Webhook"])
     status_code=status.HTTP_200_OK,
     summary="Receive incoming message",
     description=(
-        "Simulated WhatsApp webhook. Authorises sender, parses intent via OpenAI, "
+        "Simulated WhatsApp webhook. Authorises sender, parses intent via DeepSeek (OpenRouter), "
         "routes to the correct handler, and returns a response string."
     ),
 )
@@ -66,7 +67,7 @@ async def receive_message(
     # Step 2 — Parse intent with AI
     # ------------------------------------------------------------------ #
     try:
-        intent = await agent_parser.parse(payload.body)
+        intent = await asyncio.to_thread(agent_parser.parse, payload.body)
     except IntentParserError as exc:
         logger.error("Intent parsing failed: %s", exc)
         # Do not expose internal errors to the caller; return a graceful reply

@@ -24,10 +24,9 @@ class Settings(BaseSettings):
     ALLOWED_USER_PHONE: str  # e.g. "+1234567890"
 
     # ------------------------------------------------------------------ #
-    # OpenAI
+    # OpenRouter (DeepSeek)
     # ------------------------------------------------------------------ #
-    OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENROUTER_API_KEY: str
 
     # ------------------------------------------------------------------ #
     # Database

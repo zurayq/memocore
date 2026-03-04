@@ -2,7 +2,7 @@
 
 A production-ready personal AI assistant that manages your calendar and tasks
 via a WhatsApp-style webhook interface. Built with **FastAPI**, **SQLAlchemy**,
-**OpenAI**, and **APScheduler**.
+**DeepSeek** (via OpenRouter), and **APScheduler**.
 
 ---
 
@@ -15,7 +15,7 @@ memo/
 │   ├── main.py              # FastAPI app entry point, lifespan management
 │   ├── config.py            # Centralised pydantic-settings config
 │   ├── database.py          # Async SQLAlchemy engine + session dependency
-│   ├── agent.py             # OpenAI intent parser
+│   ├── agent.py             # DeepSeek intent parser (via OpenRouter)
 │   ├── agent_router.py      # Intent → handler dispatch table
 │   ├── scheduler.py         # APScheduler reminder engine
 │   ├── models/
@@ -26,7 +26,7 @@ memo/
 │   ├── schemas/
 │   │   ├── __init__.py
 │   │   ├── webhook.py       # Incoming message payload
-│   │   ├── intent.py        # ParsedIntent (OpenAI output)
+│   │   ├── intent.py        # ParsedIntent (AI model output)
 │   │   ├── event.py
 │   │   ├── task.py
 │   │   └── recurring_event.py
@@ -50,7 +50,7 @@ memo/
 ### 1. Prerequisites
 
 - Python 3.12+
-- An [OpenAI API key](https://platform.openai.com/api-keys)
+- An [OpenRouter API key](https://openrouter.ai/keys)
 
 ### 2. Clone & set up the virtual environment
 
@@ -80,8 +80,7 @@ Open `.env` in your editor and fill in:
 | Variable | Description |
 |---|---|
 | `ALLOWED_USER_PHONE` | Your phone number in E.164 format, e.g. `+12025551234` |
-| `OPENAI_API_KEY` | Your OpenAI secret key |
-| `OPENAI_MODEL` | Model to use (default: `gpt-4o-mini`) |
+| `OPENROUTER_API_KEY` | Your OpenRouter API key (get it at openrouter.ai/keys) |
 | `DATABASE_URL` | SQLite (default) or PostgreSQL URL |
 
 ### 4. Run the server
@@ -165,7 +164,7 @@ Webhook POST
     ▼
 routers/webhook.py
     ├─ Auth check (ALLOWED_USER_PHONE)
-    ├─ agent.py (OpenAI → ParsedIntent)
+    ├─ agent.py (DeepSeek via OpenRouter → ParsedIntent)
     └─ agent_router.py (dispatch)
             │
             ├─ services/event_service.py

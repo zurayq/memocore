@@ -1,20 +1,19 @@
 """
-agent.py — AI Intent Parser using OpenAI's Chat Completions API.
+agent.py — AI Intent Parser using DeepSeek via OpenRouter.
 
 Architecture decision: The agent is intentionally kept stateless. It receives
-a message string, calls OpenAI, and returns a ParsedIntent object. This makes
-it trivially testable: mock the OpenAI client and assert on the returned
+a message string, calls the OpenRouter API, and returns a ParsedIntent object.
+This makes it trivially testable: mock the client and assert on the returned
 Pydantic model. All routing decisions are made by the caller (agent_router).
 
-The system prompt is deliberately specific and asks for JSON output so that we
-can rely on structured_outputs / json_mode for deterministic parsing. We use
-response_format={"type": "json_object"} for broad model compatibility.
+The system prompt is deliberately specific and asks for JSON-only output.
+DeepSeek follows this instruction reliably at temperature=0.
 """
 
 import json
 import logging
 
-from openai import AsyncOpenAI
+from openai import OpenAI
 
 from memocore.config import get_settings
 from memocore.schemas.intent import ParsedIntent
@@ -75,47 +74,48 @@ Rules:
 
 
 class IntentParserError(Exception):
-    """Raised when OpenAI returns a non-parseable or invalid response."""
+    """Raised when the model returns a non-parseable or invalid response."""
 
 
 class AgentParser:
     """
-    Wraps the OpenAI async client and exposes a single `parse` method.
+    Wraps the OpenRouter client and exposes a single `parse` method.
 
     Dependency injection pattern: the client is created once and reused across
     requests. In tests, pass a mock client to the constructor.
     """
 
     def __init__(self) -> None:
-        self._client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        self._client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=settings.OPENROUTER_API_KEY,
+        )
 
-    async def parse(self, user_message: str) -> ParsedIntent:
+    def parse(self, user_message: str) -> ParsedIntent:
         """
-        Send a user message to OpenAI and return a validated ParsedIntent.
+        Send a user message to DeepSeek via OpenRouter and return a validated ParsedIntent.
 
         Raises:
             IntentParserError: if the model returns invalid JSON or a JSON
                                structure that doesn't conform to ParsedIntent.
         """
-        logger.info("Sending message to OpenAI for intent parsing")
+        logger.info("Sending message to DeepSeek (OpenRouter) for intent parsing")
 
         try:
-            response = await self._client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
-                response_format={"type": "json_object"},
+            response = self._client.chat.completions.create(
+                model="deepseek/deepseek-chat",
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": user_message},
                 ],
-                temperature=0.0,  # deterministic output for classification tasks
-                max_tokens=512,
+                temperature=0,
             )
         except Exception as exc:
-            logger.exception("OpenAI API call failed")
-            raise IntentParserError(f"OpenAI API error: {exc}") from exc
+            logger.exception("OpenRouter API call failed")
+            raise IntentParserError(f"OpenRouter API error: {exc}") from exc
 
         raw_content = response.choices[0].message.content or ""
-        logger.debug("Raw OpenAI response: %s", raw_content)
+        logger.debug("Raw DeepSeek response: %s", raw_content)
 
         try:
             data = json.loads(raw_content)
@@ -137,6 +137,6 @@ class AgentParser:
         return intent
 
 
-# Module-level singleton — instantiated once at import time so the OpenAI
+# Module-level singleton — instantiated once at import time so the OpenRouter
 # client (which maintains a connection pool) is reused across requests.
 agent_parser = AgentParser()
