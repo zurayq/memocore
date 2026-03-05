@@ -2,33 +2,37 @@
 schemas/event.py — Pydantic request/response schemas for Events.
 """
 
+from __future__ import annotations
+
 from datetime import date, datetime, time
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
 class EventCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    description: str | None = None
+    description: Optional[str] = None
     date: date
-    time: time | None = None
-    location: str | None = Field(default=None, max_length=500)
+    time: Optional[time] = None
+    location: Optional[str] = Field(default=None, max_length=500)
 
 
 class EventUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
-    date: date | None = None
-    time: time | None = None
-    location: str | None = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    description: Optional[str] = None
+    date: Optional[date] = None
+    time: Optional[time] = None
+    location: Optional[str] = None
 
 
 class EventRead(BaseModel):
     id: str
     title: str
-    description: str | None
+    description: Optional[str]
     date: date
-    time: time | None
-    location: str | None
+    time: Optional[time]
+    location: Optional[str]
     reminder_sent: bool
     created_at: datetime
     updated_at: datetime

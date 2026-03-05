@@ -6,6 +6,10 @@ API payloads (which have many extra fields) don't cause validation errors.
 The fields we actually need are explicitly declared.
 """
 
+from __future__ import annotations
+
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -23,7 +27,7 @@ class WebhookPayload(BaseModel):
         description="Sender's phone number in E.164 format, e.g. +1234567890",
     )
     body: str = Field(..., description="Text body of the message")
-    message_id: str | None = Field(
+    message_id: Optional[str] = Field(
         default=None, description="Optional message ID for idempotency"
     )
 

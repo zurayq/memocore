@@ -1,5 +1,5 @@
 """
-schemas/intent.py — Pydantic model for the structured intent returned by OpenAI.
+schemas/intent.py — Pydantic model for the structured intent returned by the AI model.
 
 Architecture decision: Using a discriminated union (Literal type on 'intent')
 gives us compile-time and runtime exhaustiveness checking. Adding a new intent
@@ -7,7 +7,10 @@ only requires adding a new Literal variant and handler — the validator catches
 unknown intents automatically.
 """
 
-from typing import Any, Literal
+from __future__ import annotations
+
+from typing import Any, Literal, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -45,6 +48,6 @@ class ParsedIntent(BaseModel):
         le=1.0,
         description="Model's self-reported confidence (0–1)",
     )
-    raw_text: str | None = Field(
+    raw_text: Optional[str] = Field(
         default=None, description="Original user message for logging/debugging"
     )
