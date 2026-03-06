@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     ALLOWED_USER_PHONE: str  # e.g. "+1234567890"
 
     # ------------------------------------------------------------------ #
+    # WhatsApp Cloud API
+    # ------------------------------------------------------------------ #
+    WHATSAPP_VERIFY_TOKEN: str
+    WHATSAPP_PHONE_NUMBER_ID: str
+    WHATSAPP_ACCESS_TOKEN: str
+
+    # ------------------------------------------------------------------ #
     # OpenRouter (DeepSeek)
     # ------------------------------------------------------------------ #
     OPENROUTER_API_KEY: str
