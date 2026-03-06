@@ -117,11 +117,20 @@ class AgentParser:
         raw_content = response.choices[0].message.content or ""
         logger.debug("Raw DeepSeek response: %s", raw_content)
 
+        # Extract JSON even if the model adds extra text
+        start = raw_content.find("{")
+        end = raw_content.rfind("}") + 1
+
+        if start == -1 or end == -1:
+            raise IntentParserError(f"No JSON found in response: {raw_content}")
+
+        json_str = raw_content[start:end]
+
         try:
-            data = json.loads(raw_content)
+            data = json.loads(json_str)
         except json.JSONDecodeError as exc:
             raise IntentParserError(
-                f"OpenAI returned non-JSON content: {raw_content!r}"
+                f"Failed to parse JSON: {json_str}"
             ) from exc
 
         try:
