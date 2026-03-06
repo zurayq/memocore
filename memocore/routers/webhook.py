@@ -137,7 +137,7 @@ async def receive_message(
         logger.error("Intent parsing failed: %s", exc)
         await send_whatsapp_message(
             to=from_number,
-            text="Sorry, I had trouble understanding that."
+            text=f"Parser error: {exc}"
         )
         return Response(status_code=200)
 
