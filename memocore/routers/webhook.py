@@ -8,15 +8,16 @@ It performs three jobs only:
   3. Delegate action to the agent router.
 All business logic lives in services/; this layer only orchestrates.
 
-WhatsApp Cloud API sends a POST to this endpoint. For simulation we accept
-a flat JSON body matching our WebhookPayload schema.
+WhatsApp Cloud API sends a GET request to verify the webhook and POST
+requests for incoming messages.
 """
 
 import asyncio
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from memocore.agent import agent_parser, IntentParserError
@@ -31,6 +32,39 @@ settings = get_settings()
 router = APIRouter(prefix="/webhook", tags=["Webhook"])
 
 
+# ------------------------------------------------------------------ #
+# WhatsApp webhook verification endpoint (required by Meta)
+# ------------------------------------------------------------------ #
+@router.get(
+    "",
+    summary="Verify webhook",
+    description="Meta webhook verification endpoint used when registering the webhook."
+)
+async def verify_webhook(request: Request):
+    """
+    Meta sends a GET request to verify the webhook with:
+      hub.mode
+      hub.verify_token
+      hub.challenge
+
+    We must return the challenge value if the token matches.
+    """
+
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge")
+
+    if mode == "subscribe" and token == settings.WHATSAPP_VERIFY_TOKEN:
+        logger.info("Webhook verified successfully")
+        return PlainTextResponse(content=challenge)
+
+    logger.warning("Webhook verification failed")
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+# ------------------------------------------------------------------ #
+# Incoming message handler
+# ------------------------------------------------------------------ #
 @router.post(
     "",
     status_code=status.HTTP_200_OK,
@@ -51,6 +85,7 @@ async def receive_message(
     it will retry the delivery. We fail silently for unauthorised senders to
     avoid leaking information about who is / isn't registered.
     """
+
     # ------------------------------------------------------------------ #
     # Step 1 — Authorise sender
     # ------------------------------------------------------------------ #
@@ -58,7 +93,6 @@ async def receive_message(
         logger.warning(
             "Ignoring message from unauthorised sender: %s", payload.from_number
         )
-        # Return 200 immediately; do not process or log the message body
         return {"status": "ignored", "reason": "unauthorised sender"}
 
     logger.info("Processing message from authorised user: %s", payload.from_number)
@@ -70,7 +104,6 @@ async def receive_message(
         intent = await asyncio.to_thread(agent_parser.parse, payload.body)
     except IntentParserError as exc:
         logger.error("Intent parsing failed: %s", exc)
-        # Do not expose internal errors to the caller; return a graceful reply
         return {
             "status": "error",
             "reply": "Sorry, I had trouble understanding that. Please try again.",
@@ -85,6 +118,9 @@ async def receive_message(
     return {"status": "processed", "intent": intent.intent, "reply": reply}
 
 
+# ------------------------------------------------------------------ #
+# Health endpoint
+# ------------------------------------------------------------------ #
 @router.get("/health", tags=["Health"], summary="Health check")
 async def health() -> dict:
     """Simple liveness probe — returns 200 if the application is running."""
