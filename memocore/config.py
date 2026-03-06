@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     REMINDER_CHECK_INTERVAL_SECONDS: int = 60  # how often to poll for upcoming events
     REMINDER_LEAD_TIME_MINUTES: int = 15       # remind N minutes before event
+    WHATSAPP_VERIFY_TOKEN: str   # WhatsApp webhook verification
 
     model_config = SettingsConfigDict(
         env_file=".env",
