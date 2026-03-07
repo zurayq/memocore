@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str
 
     GROQ_API_KEY: str
+  
+    REMINDER_CHECK_INTERVAL_SECONDS: int = 60
+    REMINDER_LEAD_TIME_MINUTES: int = 15
 
     class Config:
         env_file = ".env"
