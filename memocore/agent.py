@@ -9,7 +9,7 @@ import json
 import logging
 import os
 
-from openai import OpenAI
+from groq import Groq
 
 from memocore.config import get_settings
 from memocore.schemas.intent import ParsedIntent
@@ -59,17 +59,8 @@ class AgentParser:
     """Handles communication with the DeepSeek API."""
 
     def __init__(self) -> None:
-        api_key = os.getenv("DEEPSEEK_API_KEY")
-
-        if not api_key:
-            raise RuntimeError("DEEPSEEK_API_KEY is not set")
-
-        logger.info("DeepSeek API key loaded")
-
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.deepseek.com"
-        )
+        settings = get_settings()
+        self.client = Groq(api_key=settings.GROQ_API_KEY)
 
     def parse(self, message: str) -> ParsedIntent:
         """
@@ -77,21 +68,20 @@ class AgentParser:
         """
 
         try:
-            response = self.client.chat.completions.create(
-                model="deepseek-chat",
+            completion = self.client.chat.completions.create(
+                model="openai/gpt-oss-120b",
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": "You extract task or event intents from user messages."},
                     {"role": "user", "content": message},
                 ],
-                temperature=0,
             )
         except Exception as exc:
-            logger.exception("DeepSeek API request failed")
-            raise IntentParserError(f"DeepSeek API error: {exc}") from exc
+            logger.exception("Groq API request failed")
+            raise IntentParserError(f"Groq API error: {exc}") from exc
 
-        raw_output = response.choices[0].message.content
+        raw_output = completion.choices[0].message.content
 
-        logger.info("DeepSeek response: %s", raw_output)
+        logger.info("Groq response: %s", raw_output)
 
         # ------------------------------------------------------------
         # Extract JSON safely
