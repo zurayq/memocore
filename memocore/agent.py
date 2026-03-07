@@ -1,9 +1,13 @@
 """
-agent.py — AI Intent Parser using DeepSeek via OpenRouter.
+agent.py — AI Intent Parser using DeepSeek directly.
+
+This module converts natural language messages into structured intents
+for MemoCore. It uses DeepSeek's chat model via the OpenAI-compatible API.
 """
 
 import json
 import logging
+import os
 
 from openai import OpenAI
 
@@ -13,125 +17,104 @@ from memocore.schemas.intent import ParsedIntent
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# ------------------------------------------------------------------ #
-# System prompt
-# ------------------------------------------------------------------ #
-SYSTEM_PROMPT = """
-You are MemoCore, a personal AI assistant that manages a user's calendar and tasks.
 
-Your ONLY job is to convert the user's natural-language message into a JSON object.
+class IntentParserError(Exception):
+    """Raised when the AI response cannot be parsed into a valid intent."""
+
+
+# ------------------------------------------------------------
+# System prompt
+# ------------------------------------------------------------
+
+SYSTEM_PROMPT = """
+You are MemoCore, a personal productivity assistant.
+
+Your job is to convert a user's message into JSON describing their intent.
 
 Supported intents:
-- add_event
-- add_recurring_event
-- add_task
-- query_schedule
-- update_event
-- delete_event
-- unknown
 
-Respond ONLY with valid JSON.
-Do not include explanations, markdown, or extra text.
+add_task
+add_event
+add_recurring_event
+query_schedule
+update_event
+delete_event
+unknown
 
-Example output:
+Return ONLY valid JSON.
+
+Example:
+
 {
   "intent": "add_task",
-  "confidence": 0.95,
+  "confidence": 0.92,
   "payload": {
-    "title": "Buy groceries",
-    "priority": "medium"
+    "title": "Buy groceries"
   }
 }
 """
 
 
-class IntentParserError(Exception):
-    """Raised when the model returns a non-parseable or invalid response."""
-
-
 class AgentParser:
-    """
-    Stateless parser that sends a message to OpenRouter and returns ParsedIntent.
-    """
+    """Handles communication with the DeepSeek API."""
 
     def __init__(self) -> None:
-        raw_key = settings.OPENROUTER_API_KEY
-
-        # Sanitize key aggressively
-        api_key = (raw_key or "").strip().strip('"').strip("'")
-
-        # Helpful debug without leaking full secret
-        logger.warning(
-            "OpenRouter key loaded: prefix=%r length=%d",
-            api_key[:10],
-            len(api_key),
-        )
+        api_key = os.getenv("DEEPSEEK_API_KEY")
 
         if not api_key:
-            raise RuntimeError("OPENROUTER_API_KEY is empty after stripping")
+            raise RuntimeError("DEEPSEEK_API_KEY is not set")
 
-        if not api_key.startswith("sk-or-"):
-            raise RuntimeError(
-                f"OPENROUTER_API_KEY looks wrong. Expected prefix 'sk-or-', got {api_key[:10]!r}"
-            )
+        logger.info("DeepSeek API key loaded")
 
-        self._client = OpenAI(
+        self.client = OpenAI(
             api_key=api_key,
-            base_url="https://openrouter.ai/api/v1",
-            default_headers={
-                "HTTP-Referer": "https://memocore.onrender.com",
-                "X-Title": "MemoCore",
-            },
+            base_url="https://api.deepseek.com"
         )
 
-    def parse(self, user_message: str) -> ParsedIntent:
+    def parse(self, message: str) -> ParsedIntent:
         """
-        Send a user message to DeepSeek via OpenRouter and return ParsedIntent.
+        Send user message to DeepSeek and return ParsedIntent.
         """
-        logger.info("Sending message to DeepSeek (OpenRouter) for intent parsing")
 
         try:
-            response = self._client.chat.completions.create(
-                model="deepseek/deepseek-chat",
+            response = self.client.chat.completions.create(
+                model="deepseek-chat",
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_message},
+                    {"role": "user", "content": message},
                 ],
                 temperature=0,
             )
         except Exception as exc:
-            logger.exception("OpenRouter API call failed")
-            raise IntentParserError(f"OpenRouter API error: {exc}") from exc
+            logger.exception("DeepSeek API request failed")
+            raise IntentParserError(f"DeepSeek API error: {exc}") from exc
 
-        raw_content = response.choices[0].message.content or ""
-        logger.info("DeepSeek raw response: %s", raw_content)
+        raw_output = response.choices[0].message.content
 
-        # Extract JSON safely even if the model adds extra text
-        start = raw_content.find("{")
-        end = raw_content.rfind("}") + 1
+        logger.info("DeepSeek response: %s", raw_output)
 
-        if start == -1 or end == 0:
-            raise IntentParserError(f"No JSON found in response: {raw_content}")
+        # ------------------------------------------------------------
+        # Extract JSON safely
+        # ------------------------------------------------------------
 
-        json_str = raw_content[start:end]
+        start = raw_output.find("{")
+        end = raw_output.rfind("}") + 1
+
+        if start == -1 or end == -1:
+            raise IntentParserError("No JSON returned from model")
+
+        json_str = raw_output[start:end]
 
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError as exc:
-            raise IntentParserError(f"Failed to parse JSON: {json_str}") from exc
+            raise IntentParserError("Invalid JSON returned by model") from exc
 
         try:
-            intent = ParsedIntent(**data, raw_text=user_message)
+            intent = ParsedIntent(**data, raw_text=message)
         except Exception as exc:
-            raise IntentParserError(
-                f"Response did not match ParsedIntent schema: {exc}"
-            ) from exc
+            raise IntentParserError("Parsed intent schema mismatch") from exc
 
-        logger.info(
-            "Parsed intent=%s confidence=%.2f",
-            intent.intent,
-            intent.confidence,
-        )
         return intent
 
 
