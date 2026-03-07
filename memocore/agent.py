@@ -1,35 +1,33 @@
 """
-agent.py — AI Intent Parser using DeepSeek directly.
+agent.py — AI Intent Parser using Groq
 
 This module converts natural language messages into structured intents
-for MemoCore. It uses DeepSeek's chat model via the OpenAI-compatible API.
+for MemoCore using Groq's OpenAI-compatible API.
 """
 
 import json
 import logging
-import os
-
 from groq import Groq
 
 from memocore.config import get_settings
 from memocore.schemas.intent import ParsedIntent
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(**name**)
 settings = get_settings()
 
-
 class IntentParserError(Exception):
-    """Raised when the AI response cannot be parsed into a valid intent."""
-
+"""Raised when the AI response cannot be parsed into a valid intent."""
 
 # ------------------------------------------------------------
+
 # System prompt
+
 # ------------------------------------------------------------
 
 SYSTEM_PROMPT = """
-You are MemoCore, a personal productivity assistant.
+You are MemoCore, a productivity assistant.
 
-Your job is to convert a user's message into JSON describing their intent.
+Your job is to convert a user's message into structured JSON.
 
 Supported intents:
 
@@ -41,71 +39,88 @@ update_event
 delete_event
 unknown
 
-Return ONLY valid JSON.
+You MUST return ONLY valid JSON.
 
-Example:
+Never explain anything.
+Never include text outside JSON.
+
+JSON format:
 
 {
-  "intent": "add_task",
-  "confidence": 0.92,
-  "payload": {
-    "title": "Buy groceries"
-  }
+"intent": "add_task",
+"confidence": 0.95,
+"payload": {
+"title": "Buy groceries"
+}
+}
+
+If the message is unclear:
+
+{
+"intent": "unknown",
+"confidence": 0.5,
+"payload": {}
 }
 """
 
-
 class AgentParser:
-    """Handles communication with the DeepSeek API."""
+"""Handles communication with Groq."""
 
-    def __init__(self) -> None:
-        settings = get_settings()
-        self.client = Groq(api_key=settings.GROQ_API_KEY)
+```
+def __init__(self) -> None:
+    self.client = Groq(api_key=settings.GROQ_API_KEY)
 
-    def parse(self, message: str) -> ParsedIntent:
-        """
-        Send user message to DeepSeek and return ParsedIntent.
-        """
+def parse(self, message: str) -> ParsedIntent:
+    """
+    Send user message to Groq and return ParsedIntent.
+    """
 
-        try:
-            completion = self.client.chat.completions.create(
-                model="openai/gpt-oss-120b",
-                messages=[
-                    {"role": "system", "content": "You extract task or event intents from user messages."},
-                    {"role": "user", "content": message},
-                ],
-            )
-        except Exception as exc:
-            logger.exception("Groq API request failed")
-            raise IntentParserError(f"Groq API error: {exc}") from exc
+    try:
+        completion = self.client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            temperature=0.2,
+            max_completion_tokens=512,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": message},
+            ],
+        )
 
-        raw_output = completion.choices[0].message.content
+    except Exception as exc:
+        logger.exception("Groq API request failed")
+        raise IntentParserError(f"Groq API error: {exc}") from exc
 
-        logger.info("Groq response: %s", raw_output)
+    raw_output = completion.choices[0].message.content.strip()
 
-        # ------------------------------------------------------------
-        # Extract JSON safely
-        # ------------------------------------------------------------
+    logger.info("Groq response: %s", raw_output)
 
-        start = raw_output.find("{")
-        end = raw_output.rfind("}") + 1
+    # ------------------------------------------------------------
+    # Extract JSON safely
+    # ------------------------------------------------------------
 
-        if start == -1 or end == -1:
-            raise IntentParserError("No JSON returned from model")
+    start = raw_output.find("{")
+    end = raw_output.rfind("}") + 1
 
-        json_str = raw_output[start:end]
+    if start == -1 or end == 0:
+        raise IntentParserError("No JSON returned from model")
 
-        try:
-            data = json.loads(json_str)
-        except json.JSONDecodeError as exc:
-            raise IntentParserError("Invalid JSON returned by model") from exc
+    json_str = raw_output[start:end]
 
-        try:
-            intent = ParsedIntent(**data, raw_text=message)
-        except Exception as exc:
-            raise IntentParserError("Parsed intent schema mismatch") from exc
+    try:
+        data = json.loads(json_str)
+    except json.JSONDecodeError as exc:
+        logger.error("Invalid JSON returned: %s", json_str)
+        raise IntentParserError("Invalid JSON returned by model") from exc
 
-        return intent
+    try:
+        intent = ParsedIntent(**data, raw_text=message)
+    except Exception as exc:
+        logger.error("Intent schema mismatch: %s", data)
+        raise IntentParserError("Parsed intent schema mismatch") from exc
 
+    return intent
+```
+
+# Singleton instance
 
 agent_parser = AgentParser()
