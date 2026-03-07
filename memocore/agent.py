@@ -12,7 +12,7 @@ from groq import Groq
 from memocore.config import get_settings
 from memocore.schemas.intent import ParsedIntent
 
-logger = logging.getLogger(**name**)
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 class IntentParserError(Exception):
