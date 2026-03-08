@@ -1,14 +1,13 @@
-    import json
-    import logging
+import json
+import logging
 
-    from groq import Groq
+from groq import Groq
 
-    from memocore.config import get_settings
-    from memocore.schemas.intent import ParsedIntent
+from memocore.config import get_settings
+from memocore.schemas.intent import ParsedIntent
 
-    logger = logging.getLogger(__name__)
-    settings = get_settings()
-
+logger = logging.getLogger(__name__)
+settings = get_settings()
 
     class IntentParserError(Exception):
     """Raised when the AI response cannot be parsed into a valid intent."""
