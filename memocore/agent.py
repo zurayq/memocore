@@ -15,8 +15,9 @@ from memocore.schemas.intent import ParsedIntent
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+
 class IntentParserError(Exception):
-"""Raised when the AI response cannot be parsed into a valid intent."""
+    """Raised when the AI response cannot be parsed into a valid intent."""
 
 # ------------------------------------------------------------
 
