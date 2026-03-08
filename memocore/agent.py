@@ -1,77 +1,77 @@
-"""
-agent.py — AI Intent Parser using Groq
+    """
+    agent.py — AI Intent Parser using Groq
 
-This module converts natural language messages into structured intents
-for MemoCore using Groq's OpenAI-compatible API.
-"""
+    This module converts natural language messages into structured intents
+    for MemoCore using Groq's OpenAI-compatible API.
+    """
 
-import json
-import logging
-from groq import Groq
+    import json
+    import logging
+    from groq import Groq
 
-from memocore.config import get_settings
-from memocore.schemas.intent import ParsedIntent
+    from memocore.config import get_settings
+    from memocore.schemas.intent import ParsedIntent
 
-logger = logging.getLogger(__name__)
-settings = get_settings()
+    logger = logging.getLogger(__name__)
+    settings = get_settings()
 
 
-class IntentParserError(Exception):
+    class IntentParserError(Exception):
     """Raised when the AI response cannot be parsed into a valid intent."""
 
-# ------------------------------------------------------------
+    # ------------------------------------------------------------
 
-# System prompt
+    # System prompt
 
-# ------------------------------------------------------------
+    # ------------------------------------------------------------
 
-SYSTEM_PROMPT = """
-You are MemoCore, a productivity assistant.
+    SYSTEM_PROMPT = """
+    You are MemoCore, a productivity assistant.
 
-Your job is to convert a user's message into structured JSON.
+    Your job is to convert a user's message into structured JSON.
 
-Supported intents:
+    Supported intents:
 
-add_task
-add_event
-add_recurring_event
-query_schedule
-update_event
-delete_event
-unknown
+    add_task
+    add_event
+    add_recurring_event
+    query_schedule
+    update_event
+    delete_event
+    unknown
 
-You MUST return ONLY valid JSON.
+    You MUST return ONLY valid JSON.
 
-Never explain anything.
-Never include text outside JSON.
+    Never explain anything.
+    Never include text outside JSON.
 
-JSON format:
+    JSON format:
 
-{
-"intent": "add_task",
-"confidence": 0.95,
-"payload": {
-"title": "Buy groceries"
-}
-}
+    {
+    "intent": "add_task",
+    "confidence": 0.95,
+    "payload": {
+    "title": "Buy groceries"
+    }
+    }
 
-If the message is unclear:
+    If the message is unclear:
 
-{
-"intent": "unknown",
-"confidence": 0.5,
-"payload": {}
-}
-"""
+    {
+    "intent": "unknown",
+    "confidence": 0.5,
+    "payload": {}
+    }
+    """
 
-class AgentParser:
-"""Handles communication with Groq."""
+    class AgentParser:
+    """Handles communication with Groq."""
 
-```
-def __init__(self) -> None:
+    ```
+    def __init__(self) -> None:
     self.client = Groq(api_key=settings.GROQ_API_KEY)
 
-def parse(self, message: str) -> ParsedIntent:
+    def parse(self, message: str) -> ParsedIntent:
     """
     Send user message to Groq and return ParsedIntent.
     """
@@ -120,8 +120,8 @@ def parse(self, message: str) -> ParsedIntent:
         raise IntentParserError("Parsed intent schema mismatch") from exc
 
     return intent
-```
+    ```
 
-# Singleton instance
+    # Singleton instance
 
-agent_parser = AgentParser()
+    agent_parser = AgentParser()
