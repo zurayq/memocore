@@ -54,8 +54,13 @@ Rules:
     "confidence": 0.3,
     "payload": {}
   }
-
-Interpret casual language naturally.
+- interpret casual language naturally
+- infer likely meaning when the user is informal
+- if the user says they finished something, prefer complete_task
+- if the user says remove/delete a task, prefer delete_task
+- if the user says remove/delete all tasks, prefer delete_all_tasks
+- if the user asks what tasks they have, prefer query_tasks
+- if the user asks what they have scheduled, prefer query_schedule
 
 Examples:
 
@@ -166,8 +171,8 @@ class AgentParser:
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": message},
                 ],
-                temperature=0.2,
-                max_completion_tokens=512,
+                temperature=0,
+                max_completion_tokens=300,
             )
         except Exception as exc:
             logger.exception("Groq API request failed")
