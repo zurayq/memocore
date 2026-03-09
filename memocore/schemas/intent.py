@@ -1,10 +1,5 @@
 """
 schemas/intent.py — Pydantic model for the structured intent returned by the AI model.
-
-Architecture decision: Using a discriminated union (Literal type on 'intent')
-gives us compile-time and runtime exhaustiveness checking. Adding a new intent
-only requires adding a new Literal variant and handler — the validator catches
-unknown intents automatically.
 """
 
 from __future__ import annotations
@@ -14,8 +9,7 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
 
 
-# All recognised intent labels
-intent: Literal[
+IntentLiteral = Literal[
     "add_task",
     "complete_task",
     "delete_task",
@@ -36,7 +30,7 @@ class ParsedIntent(BaseModel):
 
     `intent`  — one of the supported operation labels
     `payload` — free-form dict that each handler function knows how to consume
-    `confidence` — 0-1 score from the model (informational, logged but not acted on)
+    `confidence` — 0-1 score from the model
     """
 
     intent: IntentLiteral = Field(
@@ -53,5 +47,6 @@ class ParsedIntent(BaseModel):
         description="Model's self-reported confidence (0–1)",
     )
     raw_text: Optional[str] = Field(
-        default=None, description="Original user message for logging/debugging"
+        default=None,
+        description="Original user message for logging/debugging",
     )
