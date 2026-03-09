@@ -15,11 +15,15 @@ from pydantic import BaseModel, Field
 
 
 # All recognised intent labels
-IntentLiteral = Literal[
+intent: Literal[
+    "add_task",
+    "complete_task",
+    "delete_task",
+    "delete_all_tasks",
     "add_event",
     "add_recurring_event",
-    "add_task",
     "query_schedule",
+    "query_tasks",
     "update_event",
     "delete_event",
     "unknown",
