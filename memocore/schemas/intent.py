@@ -1,7 +1,3 @@
-"""
-schemas/intent.py — Pydantic model for the structured intent returned by the AI model.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Literal, Optional
@@ -25,14 +21,6 @@ IntentLiteral = Literal[
 
 
 class ParsedIntent(BaseModel):
-    """
-    Structured output from the AI intent parser.
-
-    `intent`  — one of the supported operation labels
-    `payload` — free-form dict that each handler function knows how to consume
-    `confidence` — 0-1 score from the model
-    """
-
     intent: IntentLiteral = Field(
         ..., description="The classified operation to perform"
     )
